@@ -74,18 +74,21 @@ class DataStream:
                 col_index = s["x"] // self.col_w
                 s.update(self._new_stream(col_index))
 
-    def draw(self, surface): 
+    def draw(self, surface):
         for s in self.streams:
             for i, char in enumerate(s["chars"]):
                 y_pos = int(s["y"]) - i * self.char_h
                 if not (0 <= y_pos <= self.h):
                     continue
 
-                if i == 0: 
-                    color = (200, 255, 300)
-                else: 
-                    fade = max(0, 255 -i * (255 // len(s["chars"])))
-                    color = (0, fade, int(fade * 0.7))
+                if i == 0:
+                    color = (200, 255, 230)
+                else:
+                    total = len(s["chars"])
+                    fade = max(0, min(255, 255 - i * (255 // total)))
+                    g = fade
+                    b = int(fade * 0.7)
+                    color = (0, g, b)
 
                 text_surface = self.font.render(char, True, color)
                 surface.blit(text_surface, (s["x"], y_pos))

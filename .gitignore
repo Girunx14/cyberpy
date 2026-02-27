@@ -1,0 +1,93 @@
+# ===========================
+# ENTORNO VIRTUAL
+# ===========================
+venv/
+env/
+.env/
+.venv/
+
+# ===========================
+# PYTHON
+# ===========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pdb
+
+# Distribución / empaquetado
+dist/
+build/
+*.egg-info/
+*.egg
+
+# ===========================
+# OPENCV / MEDIAPIPE / NUMPY
+# ===========================
+*.npy
+*.npz
+
+# ===========================
+# ARCHIVOS DEL SISTEMA
+# ===========================
+
+# Windows
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# Mac
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+
+# ===========================
+# EDITORES E IDEs
+# ===========================
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Spyder
+.spyderproject.cfg
+.spyproject/
+
+# ===========================
+# LOGS Y TEMPORALES
+# ===========================
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+
+# ===========================
+# ASSETS PESADOS (opcional)
+# ===========================
+# Descomenta estas líneas si tus assets son muy pesados
+# y prefieres no subirlos a GitHub
+# assets/sounds/*.mp3
+# assets/sounds/*.wav
+# assets/images/*.png
+
+# ===========================
+# VARIABLES DE ENTORNO
+# ===========================
+.env
+.env.local
+secrets.py
+config_local.py

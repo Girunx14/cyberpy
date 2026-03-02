@@ -166,3 +166,42 @@ class Player:
         draw_x = int(self.x) - frame_w // 2
         draw_y = int(self.y) - frame_h // 2
         surface.blit(frame, (draw_x, draw_y))
+    def update(self, dt, keys):
+        moving = False
+
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+            self.x -= self.speed * dt
+            moving = True
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+            self.x += self.speed * dt
+            moving = True
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
+            self.y -= self.speed * dt
+            moving = True
+        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
+            self.y += self.speed * dt
+            moving = True
+
+        half = 24
+        self.x = max(half, min(self.screen_w - half, self.x))
+        self.y = max(half, min(self.screen_h - half, self.y))
+
+        self.is_moving = moving   # ← agrega esta línea aquí
+
+        if keys[pygame.K_SPACE]:
+            self.set_state("attack")
+        elif moving:
+            self.set_state("move")
+        else:
+            self.set_state("idle")
+
+        self.frame_timer += dt
+        speed = self.frame_speeds[self.state]
+
+        if self.frame_timer >= speed:
+            self.frame_timer = 0
+            total_frames = len(self.frames[self.state])
+            self.current_frame = (self.current_frame + 1) % total_frames
+
+            if self.state == "attack" and self.current_frame == 0:
+                self.set_state("idle")

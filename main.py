@@ -15,7 +15,7 @@ pygame.display.set_caption("Cyberpunk Hacker — Fase 3")
 clock = pygame.time.Clock()
 bg = CyberpunkBackground(SCREEN_W, SCREEN_H)
 particles = ParticleSystem()
-player = Player(SCREEN_W // 2, SCREEN_H // 2)
+player = Player(SCREEN_W // 2, SCREEN_H // 2, SCREEN_W, SCREEN_H)
 
 ##* muestra el contador de particulas (debug)
 font = pygame.font.SysFont("Courier New", 16)

@@ -95,37 +95,32 @@ def create_player_frames ():
     return frames
     
 class Player:
-    def __init__(self, x, y):
+    def __init__(self, x, y, screen_w, screen_h):
         self.x = x
         self.y = y
+        self.screen_w = screen_w
+        self.screen_h = screen_h
         self.frames = create_player_frames()
 
-        ##* estado actual 
         self.state = "idle"
-
-        ##* control en la animacion
         self.current_frame = 0
         self.frame_timer = 0
 
-        ##* velocidad de animacion
         self.frame_speeds = {
-            "idle": 0.12,
-            "move": 0.08,
+            "idle":   0.12,
+            "move":   0.08,
             "attack": 0.07,
         }
 
-        ##* velocidad de moviemiento 
         self.speed = 200
 
     def set_state(self, new_state):
-        ##! esto cambie el estado solo si es diferente al actual
         if new_state != self.state:
             self.state = new_state
-            self.current_frame = 0   ##* reinicia la animacion desde el frame 0
+            self.current_frame = 0
             self.frame_timer = 0
-    
+
     def update(self, dt, keys):
-        ##* movimiento con teclas
         moving = False
 
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
@@ -141,7 +136,11 @@ class Player:
             self.y += self.speed * dt
             moving = True
 
-        ##* cambio de estado conforme a la accion 
+        ##* limita al player dentro de la pantalla
+        half = 24
+        self.x = max(half, min(self.screen_w - half, self.x))
+        self.y = max(half, min(self.screen_h - half, self.y))
+
         if keys[pygame.K_SPACE]:
             self.set_state("attack")
         elif moving:
@@ -149,26 +148,21 @@ class Player:
         else:
             self.set_state("idle")
 
-        ##* avance de los frames
         self.frame_timer += dt
         speed = self.frame_speeds[self.state]
 
-        if self.frame_timer >= speed: 
+        if self.frame_timer >= speed:
             self.frame_timer = 0
             total_frames = len(self.frames[self.state])
             self.current_frame = (self.current_frame + 1) % total_frames
 
-            ##* si el ataque termina vuelve a idle 
             if self.state == "attack" and self.current_frame == 0:
                 self.set_state("idle")
-    
+
     def draw(self, surface):
         frame = self.frames[self.state][self.current_frame]
-
-        ##* centra el sprite en la posicion del player
         frame_w = frame.get_width()
         frame_h = frame.get_height()
         draw_x = int(self.x) - frame_w // 2
         draw_y = int(self.y) - frame_h // 2
-
         surface.blit(frame, (draw_x, draw_y))

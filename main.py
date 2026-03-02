@@ -5,6 +5,7 @@ import sys
 from background import CyberpunkBackground
 from particles import ParticleSystem
 from player import Player
+from audio import AudioManager
 
 pygame.init()
 
@@ -16,9 +17,12 @@ clock = pygame.time.Clock()
 bg = CyberpunkBackground(SCREEN_W, SCREEN_H)
 particles = ParticleSystem()
 player = Player(SCREEN_W // 2, SCREEN_H // 2, SCREEN_W, SCREEN_H)
+audio = AudioManager()
 
 ##* muestra el contador de particulas (debug)
 font = pygame.font.SysFont("Courier New", 16)
+
+audio.start_bgm()
 
 while True:
     dt = clock.tick(60) / 1000.0
@@ -33,6 +37,7 @@ while True:
         if event.type == pygame.MOUSEBUTTONDOWN:
             mx, my = pygame.mouse.get_pos()
             particles.emit(mx, my, count=40)
+            audio.play("explosion")
 
         ##* cuando el jugador ataca, emite partiicylas en su posicion
         if event.type == pygame.KEYDOWN:
@@ -43,10 +48,12 @@ while True:
                     count=25,
                     color=(255, 0, 180)
                 )
+                audio.play("shoot")
 
     bg.update(dt)
     particles.update(dt)
     player.update(dt, keys)
+    audio.update(dt, player.is_moving)
 
     bg.draw(screen)
     particles.draw(screen)
@@ -55,7 +62,6 @@ while True:
     ##* muestra cuántas partículas hay activas
     ##* estado actual del jugador
     state_text = font.render(f"Estado: {player.state} | Frame: {player.current_frame}", True, (0, 255, 200))
-
     screen.blit(state_text, (10, 10))
 
     pygame.display.flip()

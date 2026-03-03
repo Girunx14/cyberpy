@@ -6,6 +6,7 @@ from background import CyberpunkBackground
 from particles import ParticleSystem
 from player import Player
 from audio import AudioManager
+from hud import HUD
 
 pygame.init()
 
@@ -18,11 +19,16 @@ bg = CyberpunkBackground(SCREEN_W, SCREEN_H)
 particles = ParticleSystem()
 player = Player(SCREEN_W // 2, SCREEN_H // 2, SCREEN_W, SCREEN_H)
 audio = AudioManager()
+hud = HUD(SCREEN_W, SCREEN_H)
 
 ##* muestra el contador de particulas (debug)
 font = pygame.font.SysFont("Courier New", 16)
 
 audio.start_bgm()
+
+hud.health.set_value(75)
+hud.shield.set_value(50)
+hud.show_alert("SYSTEM BREACH DETECTED")
 
 while True:
     dt = clock.tick(60) / 1000.0
@@ -38,6 +44,7 @@ while True:
             mx, my = pygame.mouse.get_pos()
             particles.emit(mx, my, count=40)
             audio.play("explosion")
+            hud.add_score(100)
 
         ##* cuando el jugador ataca, emite partiicylas en su posicion
         if event.type == pygame.KEYDOWN:
@@ -49,15 +56,25 @@ while True:
                     color=(255, 0, 180)
                 )
                 audio.play("shoot")
+                hud.add_score(10)
+
+            if event.key == pygame.K_h:
+                hud.health.set_value(hud.health.value - 10)
+            if event.key == pygame.K_j:
+                hud.shield.set_value(hud.shield.value - 10)
+            if event.key == pygame.K_r:
+                hud.show_alert("FIREWALL RESTORED")
 
     bg.update(dt)
     particles.update(dt)
     player.update(dt, keys)
     audio.update(dt, player.is_moving)
+    hud.update(dt)
 
     bg.draw(screen)
     particles.draw(screen)
     player.draw(screen)
+    hud.draw(screen, player.x, player.y)
 
     ##* muestra cuántas partículas hay activas
     ##* estado actual del jugador

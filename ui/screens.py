@@ -21,7 +21,6 @@ class GlitchText:
 
     def update(self, dt):
         self.glitch_timer += dt
-
         if self.glitch_timer >= self.glitch_interval:
             self.glitch_timer    = 0
             self.glitch_interval = random.uniform(2.0, 4.0)
@@ -31,7 +30,6 @@ class GlitchText:
         if self.glitch_active:
             self.glitch_duration += dt
             self.offset_x = random.randint(-6, 6)
-
             if self.glitch_duration >= self.glitch_max:
                 self.glitch_active = False
                 self.offset_x      = 0
@@ -40,10 +38,8 @@ class GlitchText:
         if self.glitch_active:
             red_surf = self.font.render(self.text, True, (255, 0, 80))
             surface.blit(red_surf, (self.x - 4 + self.offset_x, self.y))
-
             cyan_surf = self.font.render(self.text, True, (0, 255, 200))
             surface.blit(cyan_surf, (self.x + 4 + self.offset_x, self.y))
-
         main_surf = self.font.render(self.text, True, self.base_color)
         surface.blit(main_surf, (self.x + self.offset_x, self.y))
 
@@ -62,12 +58,11 @@ class MenuScreen:
 
         title_surf = self.font_title.render("CYBERPUNK HACKER", True, (255, 255, 255))
         title_x    = cx - title_surf.get_width() // 2
-        self.title = GlitchText("CYBERPUNK HACKER", self.font_title, title_x, 80, (0, 255, 200))
-
+        self.title    = GlitchText("CYBERPUNK HACKER", self.font_title, title_x, 80, (0, 255, 200))
         self.subtitle = GlitchText("DEFEND THE SYSTEM", self.font_sub, cx - 110, 148, (255, 0, 180))
 
-        self.blink_timer  = 0
-        self.blink_state  = True
+        self.blink_timer = 0
+        self.blink_state = True
 
         self.panel_y      = -400
         self.panel_target = screen_h // 2 - 160
@@ -115,9 +110,7 @@ class MenuScreen:
             p["y"]   += p["vy"] * dt
             p["age"] += dt
 
-        self.deco_particles = [
-            p for p in self.deco_particles if p["age"] < p["life"]
-        ]
+        self.deco_particles = [p for p in self.deco_particles if p["age"] < p["life"]]
 
     def draw(self, surface):
         cx = self.screen_w // 2
@@ -125,11 +118,7 @@ class MenuScreen:
         for p in self.deco_particles:
             ratio = 1.0 - (p["age"] / p["life"])
             r = max(1, int(p["size"] * ratio))
-            c = (
-                int(p["color"][0] * ratio),
-                int(p["color"][1] * ratio),
-                int(p["color"][2] * ratio),
-            )
+            c = (int(p["color"][0] * ratio), int(p["color"][1] * ratio), int(p["color"][2] * ratio))
             pygame.draw.circle(surface, c, (int(p["x"]), int(p["y"])), r)
 
         panel_w = 620
@@ -142,8 +131,7 @@ class MenuScreen:
         surface.blit(panel, (panel_x, panel_y))
 
         draw_glow_rect(surface, (0, 255, 200), (panel_x, panel_y, panel_w, panel_h), 1, 3)
-
-        draw_glow_line(surface, (0, 80, 60), (panel_x + 20, panel_y + 70), (panel_x + panel_w - 20, panel_y + 70), 1, 1)
+        draw_glow_line(surface, (0, 80, 60), (panel_x + 20, panel_y + 70),  (panel_x + panel_w - 20, panel_y + 70),  1, 1)
         draw_glow_line(surface, (0, 80, 60), (panel_x + 20, panel_y + panel_h - 70), (panel_x + panel_w - 20, panel_y + panel_h - 70), 1, 1)
 
         self.title.draw(surface)
@@ -157,37 +145,126 @@ class MenuScreen:
         surface.blit(ctrl_title, (cx - ctrl_title.get_width() // 2, controls_y))
 
         gestures = [
-            ("✋  MANO ABIERTA",   "MOVER JUGADOR"),
-            ("☝️  ÍNDICE ARRIBA",  "DISPARAR"),
-            ("✊  PUÑO CERRADO",   "MODO DEFENSA"),
-            ("⌨️  WASD / FLECHAS", "MOVER (TECLADO)"),
-            ("⌨️  ESPACIO",        "DISPARAR (TECLADO)"),
+            ("MANO ABIERTA",    "MOVER JUGADOR"),
+            ("INDICE ARRIBA",   "DISPARAR"),
+            ("PUNO CERRADO",    "MODO DEFENSA"),
+            ("WASD / FLECHAS",  "MOVER (TECLADO)"),
+            ("ESPACIO",         "DISPARAR (TECLADO)"),
         ]
 
         for i, (gesto, accion) in enumerate(gestures):
             gy = controls_y + 30 + i * 28
-            gesto_surf  = self.font_small.render(gesto,  True, (0, 200, 160))
-            accion_surf = self.font_small.render(accion, True, (255, 255, 255))
-            sep_surf    = self.font_small.render("→",    True, (255, 0, 180))
-
-            gx = cx - 220
-            surface.blit(gesto_surf,  (gx, gy))
-            surface.blit(sep_surf,    (gx + 180, gy))
-            surface.blit(accion_surf, (gx + 210, gy))
+            surface.blit(self.font_small.render(gesto,  True, (0, 200, 160)), (cx - 220, gy))
+            surface.blit(self.font_small.render("->",   True, (255, 0, 180)), (cx - 40,  gy))
+            surface.blit(self.font_small.render(accion, True, (255, 255, 255)), (cx - 10, gy))
 
         if self.blink_state:
-            start_text  = "[ PRESS ENTER OR SPACE TO START ]"
-            start_surf  = self.font_medium.render(start_text, True, (255, 220, 0))
-            start_x     = cx - start_surf.get_width() // 2
-            start_y     = panel_y + panel_h - 50
-            surface.blit(start_surf, (start_x, start_y))
+            start_surf = self.font_medium.render("[ PRESS ENTER OR SPACE TO START ]", True, (255, 220, 0))
+            surface.blit(start_surf, (cx - start_surf.get_width() // 2, panel_y + panel_h - 50))
 
         corner = 12
-        corners = [
-            (panel_x,             panel_y),
-            (panel_x + panel_w,   panel_y),
-            (panel_x,             panel_y + panel_h),
-            (panel_x + panel_w,   panel_y + panel_h),
-        ]
-        for (cx2, cy2) in corners:
+        for (cx2, cy2) in [(panel_x, panel_y), (panel_x + panel_w, panel_y),
+                           (panel_x, panel_y + panel_h), (panel_x + panel_w, panel_y + panel_h)]:
             pygame.draw.circle(surface, (0, 255, 200), (cx2, cy2), corner // 2)
+
+
+class PauseScreen:
+    def __init__(self, screen_w, screen_h):
+        self.screen_w = screen_w
+        self.screen_h = screen_h
+
+        self.font_title  = pygame.font.SysFont("Courier New", 42, bold=True)
+        self.font_medium = pygame.font.SysFont("Courier New", 20, bold=True)
+        self.font_small  = pygame.font.SysFont("Courier New", 14)
+
+        self.panel_y      = -300
+        self.panel_target = screen_h // 2 - 140
+        self.panel_speed  = 700
+
+        self.blink_timer = 0
+        self.blink_state = True
+
+        self.options  = ["RESUME", "RESTART", "QUIT TO MENU", "EXIT GAME"]
+        self.selected = 0
+
+        self.title = GlitchText(
+            "// PAUSED //",
+            self.font_title,
+            screen_w // 2 - 140,
+            screen_h // 2 - 175,
+            (0, 255, 200)
+        )
+
+    def update(self, dt):
+        if self.panel_y < self.panel_target:
+            self.panel_y += self.panel_speed * dt
+            if self.panel_y >= self.panel_target:
+                self.panel_y = self.panel_target
+
+        self.title.update(dt)
+
+        self.blink_timer += dt
+        if self.blink_timer >= 0.5:
+            self.blink_timer = 0
+            self.blink_state = not self.blink_state
+
+    def handle_input(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key in (pygame.K_UP, pygame.K_w):
+                self.selected = (self.selected - 1) % len(self.options)
+            elif event.key in (pygame.K_DOWN, pygame.K_s):
+                self.selected = (self.selected + 1) % len(self.options)
+            elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                return self.options[self.selected]
+            elif event.key == pygame.K_ESCAPE:
+                return "RESUME"
+        return None
+
+    def draw(self, surface, current_score, current_wave):
+        cx = self.screen_w // 2
+
+        overlay = pygame.Surface((self.screen_w, self.screen_h), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 170))
+        surface.blit(overlay, (0, 0))
+
+        panel_w = 440
+        panel_h = 340
+        panel_x = cx - panel_w // 2
+        panel_y = int(self.panel_y)
+
+        panel = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+        panel.fill((0, 5, 15, 220))
+        surface.blit(panel, (panel_x, panel_y))
+
+        draw_glow_rect(surface, (0, 255, 200), (panel_x, panel_y, panel_w, panel_h), 1, 3)
+        draw_glow_line(surface, (0, 80, 60), (panel_x + 20, panel_y + 68), (panel_x + panel_w - 20, panel_y + 68), 1, 1)
+        draw_glow_line(surface, (0, 80, 60), (panel_x + 20, panel_y + panel_h - 75), (panel_x + panel_w - 20, panel_y + panel_h - 75), 1, 1)
+
+        self.title.draw(surface)
+
+        for i, option in enumerate(self.options):
+            oy = panel_y + 90 + i * 44
+
+            if i == self.selected:
+                highlight = pygame.Surface((panel_w - 40, 36), pygame.SRCALPHA)
+                highlight.fill((0, 60, 50, 140))
+                surface.blit(highlight, (panel_x + 20, oy - 4))
+                draw_glow_rect(surface, (0, 255, 200), (panel_x + 20, oy - 4, panel_w - 40, 36), 1, 2)
+                surface.blit(self.font_medium.render("▶", True, (255, 0, 180)), (panel_x + 28, oy))
+                color = (255, 255, 255)
+            else:
+                color = (0, 150, 120)
+
+            surface.blit(self.font_medium.render(option, True, color), (panel_x + 60, oy))
+
+        score_surf = self.font_small.render(
+            f"SCORE: {int(current_score):07d}   WAVE: {current_wave}",
+            True, (0, 180, 140)
+        )
+        surface.blit(score_surf, (cx - score_surf.get_width() // 2, panel_y + panel_h - 55))
+
+        nav_surf = self.font_small.render(
+            "W/S  NAVIGATE     ENTER  SELECT     ESC  RESUME",
+            True, (0, 100, 80)
+        )
+        surface.blit(nav_surf, (cx - nav_surf.get_width() // 2, panel_y + panel_h + 12))

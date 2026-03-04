@@ -19,7 +19,7 @@ class Game:
     def __init__(self):
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
-        pygame.display.set_caption("Cyberpunk Hacker")
+        pygame.display.set_caption("CyberPy")
         self.clock = pygame.time.Clock()
 
         self.bg        = CyberpunkBackground(SCREEN_W, SCREEN_H)

@@ -51,8 +51,8 @@ Desarrollado como proyecto para feria de ciencias universitaria con el objetivo 
 
 ```bash
 # 1. Clona el repositorio
-git clone https://github.com/tu-usuario/cyberpunk-hacker.git
-cd cyberpunk-hacker
+git clone https://github.com/Girunx14/cyberpy.git
+cd cyberpy-hacker
 
 # 2. Crea y activa el entorno virtual
 python -m venv venv
@@ -75,7 +75,7 @@ python main.py
 ##  Estructura del Proyecto
 
 ```css
-cyberpunk_hacker/
+cyberpy_hacker/
 │
 ├── main.py                  # Punto de entrada
 │
@@ -85,7 +85,7 @@ cyberpunk_hacker/
 │   └── utils.py             # Funciones reutilizables de dibujo
 │
 ├── systems/
-│   ├── background.py        # Fondo cyberpunk dinámico (grid, data streams, scanline)
+│   ├── background.py        # Fondo cyberpy dinámico (grid, data streams, scanline)
 │   ├── particles.py         # Sistema de partículas
 │   ├── audio.py             # Audio generado proceduralmente con NumPy
 │   ├── hand_controller.py   # Captura y procesamiento de gestos (MediaPipe + threading)

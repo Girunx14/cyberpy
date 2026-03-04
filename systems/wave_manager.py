@@ -22,21 +22,19 @@ class WaveManager:
         self.spawn_timer    = 0
         self.spawn_interval = 0.8
 
+        self.start_next_wave()
+
     def _build_wave(self, wave_number):
         queue = []
 
         if wave_number == 1:
             queue = [("basic", )] * 5
-
         elif wave_number == 2:
             queue = [("basic", )] * 4 + [("fast", )] * 2
-
         elif wave_number == 3:
             queue = [("fast", )] * 4 + [("tank", )] * 1
-
         elif wave_number == 4:
             queue = [("basic", )] * 3 + [("fast", )] * 3 + [("tank", )] * 2
-
         elif wave_number == 5:
             queue = [("fast", )] * 4 + [("tank", )] * 3 + [("basic", )] * 4
 
@@ -44,7 +42,7 @@ class WaveManager:
         return queue, speed_multiplier
 
     def _spawn_enemy(self, enemy_type, speed_mult):
-        side = random.randint(0, 3)
+        side   = random.randint(0, 3)
         margin = 30
 
         if side == 0:
@@ -70,39 +68,8 @@ class WaveManager:
         self.wave_complete = False
 
         queue_data, speed_mult = self._build_wave(self.current_wave)
-        self.spawn_queue    = [(t, speed_mult) for (t,) in queue_data]
-        self.spawn_timer    = 0
-
-    def update(self, dt):
-        if self.all_waves_done:
-            return
-
-        if not self.wave_active:
-            self.between_wave_timer += dt
-            if self.between_wave_timer >= self.between_wave_duration:
-                self.between_wave_timer = 0
-                if self.current_wave < self.total_waves:
-                    self.start_next_wave()
-                else:
-                    self.all_waves_done = True
-            return
-
-        if self.spawn_queue:
-            self.spawn_timer += dt
-            if self.spawn_timer >= self.spawn_interval:
-                self.spawn_timer = 0
-                enemy_type, speed_mult = self.spawn_queue.pop(0)
-                self._spawn_enemy(enemy_type, speed_mult)
-
-        for e in self.enemies:
-            if e.alive:
-                e.update(dt, 0, 0)
-
-        self.enemies = [e for e in self.enemies if e.alive]
-
-        if not self.spawn_queue and not self.enemies:
-            self.wave_active   = False
-            self.wave_complete = True
+        self.spawn_queue = [(t, speed_mult) for (t,) in queue_data]
+        self.spawn_timer = 0
 
     def get_enemies(self):
         return self.enemies

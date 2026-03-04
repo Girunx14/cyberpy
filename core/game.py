@@ -152,7 +152,6 @@ class Game:
                     if event.key == pygame.K_r:
                         self._restart()
 
-        # Gestos
         current_gesture = hand_data["gesture"]
         if self.game_state == "menu":
             if current_gesture == "open" and self.menu.ready:
@@ -183,18 +182,23 @@ class Game:
         if self.player_invincible > 0:
             self.player_invincible -= dt
 
-        for enemy in self.waves.get_enemies():
-            enemy.update(dt, self.player.x, self.player.y)
+        for enemy in self.waves.enemies:
+            if enemy.alive:
+                enemy.update(dt, self.player.x, self.player.y)
 
-        self.waves.spawn_timer += dt
-        if self.waves.spawn_queue and self.waves.spawn_timer >= self.waves.spawn_interval:
-            self.waves.spawn_timer = 0
-            enemy_type, speed_mult = self.waves.spawn_queue.pop(0)
-            self.waves._spawn_enemy(enemy_type, speed_mult)
+        self.waves.enemies = [e for e in self.waves.enemies if e.alive]
 
-        if not self.waves.spawn_queue and not self.waves.enemies and self.waves.wave_active:
-            self.waves.wave_active   = False
-            self.waves.wave_complete = True
+        if self.waves.spawn_queue:
+            self.waves.spawn_timer += dt
+            if self.waves.spawn_timer >= self.waves.spawn_interval:
+                self.waves.spawn_timer = 0
+                enemy_type, speed_mult = self.waves.spawn_queue.pop(0)
+                self.waves._spawn_enemy(enemy_type, speed_mult)
+
+        if self.waves.wave_active and not self.waves.spawn_queue and not self.waves.enemies:
+            self.waves.wave_active        = False
+            self.waves.wave_complete      = True
+            self.waves.between_wave_timer = 0
 
         if not self.waves.wave_active and not self.waves.all_waves_done:
             self.waves.between_wave_timer += dt

@@ -3,7 +3,7 @@
 > Videojuego futurista controlado con gestos de la mano en tiempo real.  
 > Construido con Python, Pygame, OpenCV y MediaPipe.
 
-![Python](https://img.shields.io/badge/Python-3.8+-blue?style=flat-square&logo=python) ![Pygame](https://img.shields.io/badge/Pygame-2.6-green?style=flat-square) ![MediaPipe](https://img.shields.io/badge/MediaPipe-0.10-orange?style=flat-square) ![License](https://img.shields.io/badge/License-MIT-purple?style=flat-square)
+![Python](https://img.shields.io/badge/Python-3.8+-blue?style=flat-square&logo=python) ![Pygame](https://img.shields.io/badge/Pygame-2.6-green?style=flat-square) ![MediaPipe](https://img.shields.io/badge/MediaPipe-0.10-orange?style=flat-square) 
 
 ---
 

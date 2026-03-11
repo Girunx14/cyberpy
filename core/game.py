@@ -170,23 +170,34 @@ class Game:
                 continue
             if self.player_invincibles[pid] > 0:
                 continue
+
+            health_bar = self.hud.health_p1 if pid == 1 else self.hud.health_p2
+            shield_bar = self.hud.shield_p1 if pid == 1 else self.hud.shield_p2
+
             for enemy in enemies:
                 if enemy.dying:
                     continue
                 dist = math.sqrt((enemy.x - player.x)**2 + (enemy.y - player.y)**2)
                 if dist < enemy.radius + 20:
-                    health_bars[pid].set_value(health_bars[pid].value - 20)
                     self.player_invincibles[pid] = self.player_invincible_max
                     self.particles.emit(int(player.x), int(player.y), count=20, color=(255, 0, 100))
                     self.audio.play("explosion")
 
-                    if health_bars[pid].value <= 0:
+                    # El escudo absorbe el daño primero
+                    if shield_bar.value > 0:
+                        shield_bar.set_value(shield_bar.value - 20)
+                        self.hud.show_alert(f"P{pid} SHIELD HIT")
+                    else:
+                        # Sin escudo el daño va directo a la vida
+                        health_bar.set_value(health_bar.value - 20)
+                        self.hud.show_alert(f"P{pid} INTEGRITY COMPROMISED")
+
+                    if health_bar.value <= 0:
                         self.player_dead[pid] = True
                         player.is_dead = True
                         self.hud.show_alert(f"P{pid} DISCONNECTED")
                         self.particles.emit(int(player.x), int(player.y), count=50, color=(255, 0, 80))
 
-        # Game over solo cuando ambos están muertos
         if self.player_dead[1] and self.player_dead[2]:
             self.game_state = "game_over"
 

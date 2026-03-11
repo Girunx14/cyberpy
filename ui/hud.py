@@ -10,10 +10,10 @@ class HealthBar:
         self.y = y
         self.w = width
         self.h = height
-        self.color        = color
-        self.value        = 100
+        self.color         = color
+        self.value         = 100
         self.display_value = 100
-        self.pulse_timer  = 0
+        self.pulse_timer   = 0
 
     def set_value(self, val):
         self.value = max(0, min(100, val))
@@ -23,25 +23,20 @@ class HealthBar:
         self.pulse_timer   += dt
 
     def draw(self, surface, font, label):
+        surface.blit(font.render(f"{label}: {int(self.display_value)}%", True, self.color), (self.x, self.y - 16))
         pygame.draw.rect(surface, (10, 10, 20), (self.x, self.y, self.w, self.h))
         fill_w = int((self.display_value / 100) * self.w)
-
         if self.value < 30:
             pulse     = abs(math.sin(self.pulse_timer * 6))
             bar_color = (int(255 * pulse), int(50 * pulse), int(50 * pulse))
         else:
             bar_color = self.color
-
         if fill_w > 0:
             pygame.draw.rect(surface, bar_color, (self.x, self.y, fill_w, self.h))
-
         draw_glow_rect(surface, self.color, (self.x, self.y, self.w, self.h), 1, 2)
-
         for i in range(1, 10):
             lx = self.x + i * (self.w // 10)
             pygame.draw.line(surface, (5, 5, 15), (lx, self.y), (lx, self.y + self.h), 1)
-
-        surface.blit(font.render(f"{label}: {int(self.display_value)}%", True, self.color), (self.x, self.y - 18))
 
 
 class ScoreDisplay:
@@ -55,8 +50,8 @@ class ScoreDisplay:
         self.flashing      = False
 
     def add_score(self, amount):
-        self.score   += amount
-        self.flashing = True
+        self.score      += amount
+        self.flashing    = True
         self.flash_timer = 0
 
     def update(self, dt):
@@ -78,12 +73,12 @@ class ScoreDisplay:
 
 class MiniMap:
     def __init__(self, x, y, width, height, game_w, game_h):
-        self.x       = x
-        self.y       = y
-        self.w       = width
-        self.h       = height
-        self.game_w  = game_w
-        self.game_h  = game_h
+        self.x           = x
+        self.y           = y
+        self.w           = width
+        self.h           = height
+        self.game_w      = game_w
+        self.game_h      = game_h
         self.pulse_timer = 0
 
     def update(self, dt):
@@ -100,10 +95,10 @@ class MiniMap:
         pygame.draw.line(surface, (0, 40, 30), (self.x, cy), (self.x + self.w, cy), 1)
         pygame.draw.line(surface, (0, 40, 30), (cx, self.y), (cx, self.y + self.h), 1)
 
-        # Colores por jugador en el minimapa
         player_colors = [(0, 255, 200), (255, 0, 180)]
-
         for i, player in enumerate(players):
+            if getattr(player, 'is_dead', False):
+                continue
             px      = self.x + int((player.x / self.game_w) * self.w)
             py      = self.y + int((player.y / self.game_h) * self.h)
             pulse_r = int(3 + abs(math.sin(self.pulse_timer * 3 + i)) * 3)
@@ -122,25 +117,30 @@ class HUD:
         self.font_medium = pygame.font.SysFont("Courier New", 16, bold=True)
         self.font_large  = pygame.font.SysFont("Courier New", 22, bold=True)
 
-        # Jugador 1 — lado izquierdo, cyan
-        self.health_p1 = HealthBar(20, screen_h - 40,  200, 14, (0, 255, 200))
-        self.shield_p1 = HealthBar(20, screen_h - 75,  200, 14, (0, 150, 255))
+        # Jugador 1 — esquina inferior izquierda
+        self.health_p1 = HealthBar(20, screen_h - 70, 180, 14, (0, 255, 200))
+        self.shield_p1 = HealthBar(20, screen_h - 30, 180, 14, (0, 150, 255))
 
-        # Jugador 2 — lado derecho, magenta
-        self.health_p2 = HealthBar(screen_w - 220, screen_h - 40,  200, 14, (255, 0, 180))
-        self.shield_p2 = HealthBar(screen_w - 220, screen_h - 75,  200, 14, (255, 150, 0))
+        # Jugador 2 — esquina inferior derecha
+        self.health_p2 = HealthBar(screen_w - 200, screen_h - 70, 180, 14, (255, 0, 180))
+        self.shield_p2 = HealthBar(screen_w - 200, screen_h - 30, 180, 14, (200, 100, 255))
 
-        self.score   = ScoreDisplay(screen_w // 2 - 60, 20, (0, 255, 200))
-        self.minimap = MiniMap(screen_w // 2 - 55, screen_h - 130, 110, 110, screen_w, screen_h)
+        # Score — esquina superior derecha
+        self.score = ScoreDisplay(screen_w - 170, 8, (0, 255, 200))
 
-        # Propiedades de compatibilidad para que game.py pueda acceder
-        # como self.hud.health y self.hud.shield (jugador 1 por defecto)
+        # Minimapa — esquina inferior derecha encima de barras P2
+        self.minimap = MiniMap(
+            screen_w - 130, screen_h - 210,
+            110, 110,
+            screen_w, screen_h
+        )
+
         self.health = self.health_p1
         self.shield = self.shield_p1
 
-        self.game_time     = 0
-        self.alert_text    = ""
-        self.alert_timer   = 0
+        self.game_time      = 0
+        self.alert_text     = ""
+        self.alert_timer    = 0
         self.alert_duration = 2.0
 
     def show_alert(self, text):
@@ -162,39 +162,26 @@ class HUD:
             self.alert_timer += dt
 
     def draw(self, surface, players):
-        # Barras jugador 1
-        self.health_p1.draw(surface, self.font_small, "P1 INTEGRITY")
-        self.shield_p1.draw(surface, self.font_small, "P1 SHIELD")
+        draw_glow_line(surface, (0, 100, 80), (0, 35), (self.screen_w, 35), 1, 2)
 
-        # Barras jugador 2
-        self.health_p2.draw(surface, self.font_small, "P2 INTEGRITY")
+        self.health_p1.draw(surface, self.font_small, "P1 LIFE")
+        self.shield_p1.draw(surface, self.font_small, "P1 SHIELD")
+        self.health_p2.draw(surface, self.font_small, "P2 LIFE")
         self.shield_p2.draw(surface, self.font_small, "P2 SHIELD")
 
-        # Score central
         self.score.draw(surface, self.font_large, self.font_small)
-
-        # Minimapa con ambos jugadores
         self.minimap.draw(surface, self.font_small, players)
 
-        # Timer
         minutes = int(self.game_time) // 60
         seconds = int(self.game_time) % 60
         surface.blit(
             self.font_medium.render(f"TIME  {minutes:02d}:{seconds:02d}", True, (0, 200, 160)),
-            (self.screen_w // 2 - 60, 50)
+            (self.screen_w // 2 - 60, 12)
         )
 
-        draw_glow_line(surface, (0, 100, 80), (0, 35), (self.screen_w, 35), 1, 2)
-
-        # Etiquetas de jugador
-        p1_label = self.font_small.render("[ P1 - MANO IZQ ]", True, (0, 200, 160))
-        p2_label = self.font_small.render("[ P2 - MANO DER ]", True, (200, 0, 140))
-        surface.blit(p1_label, (20, self.screen_h - 95))
-        surface.blit(p2_label, (self.screen_w - 220, self.screen_h - 95))
-
         if self.alert_timer < self.alert_duration:
-            alpha  = 1.0 - (self.alert_timer / self.alert_duration)
-            pulse  = abs(math.sin(self.alert_timer * 8))
-            color  = (int(255 * pulse * alpha), int(50 * alpha), int(50 * alpha))
-            alert  = self.font_large.render(self.alert_text, True, color)
+            alpha = 1.0 - (self.alert_timer / self.alert_duration)
+            pulse = abs(math.sin(self.alert_timer * 8))
+            color = (int(255 * pulse * alpha), int(50 * alpha), int(50 * alpha))
+            alert = self.font_large.render(self.alert_text, True, color)
             surface.blit(alert, (self.screen_w // 2 - alert.get_width() // 2, self.screen_h // 2 - 40))

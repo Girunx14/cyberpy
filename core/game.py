@@ -34,9 +34,8 @@ class Game:
         self.pause     = PauseScreen(SCREEN_W, SCREEN_H)
         self.powerups  = PowerUpManager()
 
-        # Dos jugadores: P1 mano izquierda, P2 mano derecha
-        self.player1 = Player(SCREEN_W // 3,       SCREEN_H // 2, SCREEN_W, SCREEN_H, player_id=1)
-        self.player2 = Player(SCREEN_W * 2 // 3,   SCREEN_H // 2, SCREEN_W, SCREEN_H, player_id=2)
+        self.player1 = Player(SCREEN_W // 3,     SCREEN_H // 2, SCREEN_W, SCREEN_H, player_id=1)
+        self.player2 = Player(SCREEN_W * 2 // 3, SCREEN_H // 2, SCREEN_W, SCREEN_H, player_id=2)
         self.players = [self.player1, self.player2]
 
         self.projectiles = []
@@ -44,13 +43,14 @@ class Game:
         self.font_large  = pygame.font.SysFont("Courier New", 36, bold=True)
         self.font_medium = pygame.font.SysFont("Courier New", 20, bold=True)
 
-        self.game_state   = "menu"
+        self.game_state    = "menu"
         self.last_gestures = {"Left": "none", "Right": "none"}
 
-        self.shoot_cooldowns = {1: 0, 2: 0}
+        self.shoot_cooldowns       = {1: 0, 2: 0}
         self.shoot_cooldown_max    = 0.25
         self.player_invincibles    = {1: 0, 2: 0}
         self.player_invincible_max = 1.5
+        self.player_dead           = {1: False, 2: False}
 
         self.audio.start_bgm()
         self.hand.start()
@@ -60,19 +60,20 @@ class Game:
         self.hud.show_alert("SYSTEM BREACH DETECTED")
 
     def _restart(self):
-        self.waves     = WaveManager(SCREEN_W, SCREEN_H)
-        self.player1   = Player(SCREEN_W // 3,     SCREEN_H // 2, SCREEN_W, SCREEN_H, player_id=1)
-        self.player2   = Player(SCREEN_W * 2 // 3, SCREEN_H // 2, SCREEN_W, SCREEN_H, player_id=2)
-        self.players   = [self.player1, self.player2]
-        self.hud       = HUD(SCREEN_W, SCREEN_H)
-        self.menu      = MenuScreen(SCREEN_W, SCREEN_H)
-        self.pause     = PauseScreen(SCREEN_W, SCREEN_H)
-        self.powerups  = PowerUpManager()
+        self.waves       = WaveManager(SCREEN_W, SCREEN_H)
+        self.player1     = Player(SCREEN_W // 3,     SCREEN_H // 2, SCREEN_W, SCREEN_H, player_id=1)
+        self.player2     = Player(SCREEN_W * 2 // 3, SCREEN_H // 2, SCREEN_W, SCREEN_H, player_id=2)
+        self.players     = [self.player1, self.player2]
+        self.hud         = HUD(SCREEN_W, SCREEN_H)
+        self.menu        = MenuScreen(SCREEN_W, SCREEN_H)
+        self.pause       = PauseScreen(SCREEN_W, SCREEN_H)
+        self.powerups    = PowerUpManager()
         self.projectiles = []
         self.game_state  = "menu"
         self.last_gestures      = {"Left": "none", "Right": "none"}
         self.shoot_cooldowns    = {1: 0, 2: 0}
         self.player_invincibles = {1: 0, 2: 0}
+        self.player_dead        = {1: False, 2: False}
 
     def _get_nearest_enemy(self, from_x, from_y):
         enemies = self.waves.get_enemies()
@@ -80,11 +81,24 @@ class Game:
             return None
         return min(enemies, key=lambda e: math.sqrt((e.x - from_x)**2 + (e.y - from_y)**2))
 
+    def _get_nearest_enemy_target(self, enemy):
+        """Retorna coordenadas del jugador vivo más cercano al enemigo."""
+        candidates = []
+        if not self.player_dead[1]:
+            d1 = math.sqrt((enemy.x - self.player1.x)**2 + (enemy.y - self.player1.y)**2)
+            candidates.append((d1, self.player1.x, self.player1.y))
+        if not self.player_dead[2]:
+            d2 = math.sqrt((enemy.x - self.player2.x)**2 + (enemy.y - self.player2.y)**2)
+            candidates.append((d2, self.player2.x, self.player2.y))
+        if not candidates:
+            return (SCREEN_W // 2, SCREEN_H // 2)
+        candidates.sort(key=lambda c: c[0])
+        return (candidates[0][1], candidates[0][2])
+
     def _shoot_toward(self, player, target_x, target_y):
         pid = player.player_id
         if self.shoot_cooldowns[pid] > 0:
             return
-
         cooldown = self.shoot_cooldown_max * 0.5 if self.powerups.is_active("rapid_fire") else self.shoot_cooldown_max
         self.shoot_cooldowns[pid] = cooldown
 
@@ -130,7 +144,8 @@ class Game:
                 self.particles.emit(int(p.x), int(p.y), count=20, color=(255, 0, 180))
 
     def _check_collisions(self):
-        enemies = self.waves.get_enemies()
+        enemies     = self.waves.get_enemies()
+        health_bars = {1: self.hud.health_p1, 2: self.hud.health_p2}
 
         for proj in self.projectiles:
             if not proj.alive:
@@ -149,10 +164,10 @@ class Game:
                         self.particles.emit(int(enemy.x), int(enemy.y), count=30, color=(255, 50, 50))
                         self.powerups.try_spawn(int(enemy.x), int(enemy.y), enemy.enemy_type)
 
-        # Colisiones de enemigos con ambos jugadores
-        health_bars = {1: self.hud.health_p1, 2: self.hud.health_p2}
         for player in self.players:
             pid = player.player_id
+            if self.player_dead[pid]:
+                continue
             if self.player_invincibles[pid] > 0:
                 continue
             for enemy in enemies:
@@ -164,11 +179,16 @@ class Game:
                     self.player_invincibles[pid] = self.player_invincible_max
                     self.particles.emit(int(player.x), int(player.y), count=20, color=(255, 0, 100))
                     self.audio.play("explosion")
-                    self.hud.show_alert(f"P{pid} INTEGRITY COMPROMISED")
 
-                    # Game over si ambos jugadores llegan a 0
-                    if self.hud.health_p1.value <= 0 and self.hud.health_p2.value <= 0:
-                        self.game_state = "game_over"
+                    if health_bars[pid].value <= 0:
+                        self.player_dead[pid] = True
+                        player.is_dead = True
+                        self.hud.show_alert(f"P{pid} DISCONNECTED")
+                        self.particles.emit(int(player.x), int(player.y), count=50, color=(255, 0, 80))
+
+        # Game over solo cuando ambos están muertos
+        if self.player_dead[1] and self.player_dead[2]:
+            self.game_state = "game_over"
 
         self.projectiles = [p for p in self.projectiles if p.alive]
 
@@ -193,12 +213,12 @@ class Game:
                     if event.key == pygame.K_ESCAPE:
                         self.game_state = "paused"
                         self.pause = PauseScreen(SCREEN_W, SCREEN_H)
-                    # Disparo teclado P1
                     elif event.key == pygame.K_SPACE:
-                        self._shoot_at_nearest(self.player1)
-                    # Disparo teclado P2
+                        if not self.player_dead[1]:
+                            self._shoot_at_nearest(self.player1)
                     elif event.key in (pygame.K_u, pygame.K_KP0):
-                        self._shoot_at_nearest(self.player2)
+                        if not self.player_dead[2]:
+                            self._shoot_at_nearest(self.player2)
 
                 elif self.game_state == "paused":
                     action = self.pause.handle_input(event)
@@ -215,26 +235,25 @@ class Game:
                     if event.key == pygame.K_r:
                         self._restart()
 
-        # Gestos por mano
         for side, player in [("Left", self.player1), ("Right", self.player2)]:
             current = hands[side]["gesture"]
             last    = self.last_gestures[side]
             if self.game_state == "playing":
                 if current == "point" and last != "point":
-                    self._shoot_at_nearest(player)
+                    if not self.player_dead[player.player_id]:
+                        self._shoot_at_nearest(player)
             self.last_gestures[side] = current
 
-        # Iniciar desde menú con cualquier mano abierta
         if self.game_state == "menu":
             if hands["Left"]["gesture"] == "open" or hands["Right"]["gesture"] == "open":
                 if self.menu.ready:
                     self._start_game()
 
-        # Click mouse dispara con P1
         if self.game_state == "playing":
             if pygame.mouse.get_pressed()[0]:
                 mx, my = pygame.mouse.get_pos()
-                self._shoot_toward(self.player1, mx, my)
+                if not self.player_dead[1]:
+                    self._shoot_toward(self.player1, mx, my)
 
     def update(self, dt, keys, hands):
         self.bg.update(dt)
@@ -256,9 +275,8 @@ class Game:
 
         for enemy in self.waves.enemies:
             if enemy.alive:
-                # Enemigo apunta al jugador más cercano
-                nearest = self._get_nearest_enemy_target(enemy)
-                enemy.update(dt, nearest[0], nearest[1])
+                target = self._get_nearest_enemy_target(enemy)
+                enemy.update(dt, target[0], target[1])
 
         self.waves.enemies = [e for e in self.waves.enemies if e.alive]
 
@@ -291,27 +309,21 @@ class Game:
 
         self.powerups.update(dt)
         for player in self.players:
-            collected = self.powerups.check_collection(player.x, player.y)
-            for powerup_type in collected:
-                self._apply_powerup(powerup_type)
+            if not self.player_dead[player.player_id]:
+                collected = self.powerups.check_collection(player.x, player.y)
+                for powerup_type in collected:
+                    self._apply_powerup(powerup_type)
 
         self._check_collisions()
         self.particles.update(dt)
 
-        # Actualizamos cada jugador con su mano correspondiente
-        self.player1.update(dt, keys, hands["Left"])
-        self.player2.update(dt, keys, hands["Right"])
+        if not self.player_dead[1]:
+            self.player1.update(dt, keys, hands["Left"])
+        if not self.player_dead[2]:
+            self.player2.update(dt, keys, hands["Right"])
 
         self.audio.update(dt, self.player1.is_moving or self.player2.is_moving)
         self.hud.update(dt)
-
-    def _get_nearest_enemy_target(self, enemy):
-        """Retorna las coordenadas del jugador más cercano a un enemigo."""
-        d1 = math.sqrt((enemy.x - self.player1.x)**2 + (enemy.y - self.player1.y)**2)
-        d2 = math.sqrt((enemy.x - self.player2.x)**2 + (enemy.y - self.player2.y)**2)
-        if d1 <= d2:
-            return (self.player1.x, self.player1.y)
-        return (self.player2.x, self.player2.y)
 
     def _draw_wave_info(self):
         wave_text = f"WAVE {self.waves.current_wave} / {self.waves.total_waves}"
@@ -358,12 +370,10 @@ class Game:
         small_rgb = cv2.cvtColor(small, cv2.COLOR_BGR2RGB).swapaxes(0, 1)
         self.screen.blit(pygame.surfarray.make_surface(small_rgb), (10, 45))
         pygame.draw.rect(self.screen, (0, 255, 200), (10, 45, 180, 120), 1)
-
-        # Estado de cada mano
         for i, (side, color) in enumerate([("Left", (0, 255, 200)), ("Right", (255, 0, 180))]):
             detected = hands[side]["detected"]
             gesture  = hands[side]["gesture"].upper()
-            label    = f"P{i+1} {side.upper()}: {gesture if detected else 'NO SIGNAL'}"
+            label    = f"P{i+1}: {gesture if detected else 'NO SIGNAL'}"
             surf     = self.font_hud.render(label, True, color if detected else (100, 100, 100))
             self.screen.blit(surf, (10, 168 + i * 16))
 
@@ -387,7 +397,8 @@ class Game:
         self.powerups.draw(self.screen)
 
         for player in self.players:
-            player.draw(self.screen)
+            if not getattr(player, 'is_dead', False):
+                player.draw(self.screen)
 
         self.hud.draw(self.screen, self.players)
         self.powerups.draw_active_effects(self.screen, SCREEN_W, SCREEN_H)
@@ -408,9 +419,9 @@ class Game:
 
     def run(self):
         while True:
-            dt        = self.clock.tick(FPS) / 1000.0
-            keys      = pygame.key.get_pressed()
-            hands     = self.hand.get_both_states()
+            dt    = self.clock.tick(FPS) / 1000.0
+            keys  = pygame.key.get_pressed()
+            hands = self.hand.get_both_states()
             self.handle_events(hands)
             self.update(dt, keys, hands)
             self.draw(hands)

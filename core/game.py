@@ -29,11 +29,15 @@ class Game:
         self.audio     = AudioManager()
         self.hand      = HandController(SCREEN_W, SCREEN_H)
         self.waves     = WaveManager(SCREEN_W, SCREEN_H)
-        self.player    = Player(SCREEN_W // 2, SCREEN_H // 2, SCREEN_W, SCREEN_H)
         self.hud       = HUD(SCREEN_W, SCREEN_H)
         self.menu      = MenuScreen(SCREEN_W, SCREEN_H)
         self.pause     = PauseScreen(SCREEN_W, SCREEN_H)
         self.powerups  = PowerUpManager()
+
+        # Dos jugadores: P1 mano izquierda, P2 mano derecha
+        self.player1 = Player(SCREEN_W // 3,       SCREEN_H // 2, SCREEN_W, SCREEN_H, player_id=1)
+        self.player2 = Player(SCREEN_W * 2 // 3,   SCREEN_H // 2, SCREEN_W, SCREEN_H, player_id=2)
+        self.players = [self.player1, self.player2]
 
         self.projectiles = []
         self.font_hud    = pygame.font.SysFont("Courier New", 13, bold=True)
@@ -41,11 +45,11 @@ class Game:
         self.font_medium = pygame.font.SysFont("Courier New", 20, bold=True)
 
         self.game_state   = "menu"
-        self.last_gesture = "none"
+        self.last_gestures = {"Left": "none", "Right": "none"}
 
-        self.shoot_cooldown        = 0
+        self.shoot_cooldowns = {1: 0, 2: 0}
         self.shoot_cooldown_max    = 0.25
-        self.player_invincible     = 0
+        self.player_invincibles    = {1: 0, 2: 0}
         self.player_invincible_max = 1.5
 
         self.audio.start_bgm()
@@ -56,70 +60,74 @@ class Game:
         self.hud.show_alert("SYSTEM BREACH DETECTED")
 
     def _restart(self):
-        self.waves        = WaveManager(SCREEN_W, SCREEN_H)
-        self.player       = Player(SCREEN_W // 2, SCREEN_H // 2, SCREEN_W, SCREEN_H)
-        self.hud          = HUD(SCREEN_W, SCREEN_H)
-        self.menu         = MenuScreen(SCREEN_W, SCREEN_H)
-        self.pause        = PauseScreen(SCREEN_W, SCREEN_H)
-        self.powerups     = PowerUpManager()
-        self.projectiles  = []
-        self.game_state   = "menu"
-        self.last_gesture = "none"
-        self.shoot_cooldown    = 0
-        self.player_invincible = 0
+        self.waves     = WaveManager(SCREEN_W, SCREEN_H)
+        self.player1   = Player(SCREEN_W // 3,     SCREEN_H // 2, SCREEN_W, SCREEN_H, player_id=1)
+        self.player2   = Player(SCREEN_W * 2 // 3, SCREEN_H // 2, SCREEN_W, SCREEN_H, player_id=2)
+        self.players   = [self.player1, self.player2]
+        self.hud       = HUD(SCREEN_W, SCREEN_H)
+        self.menu      = MenuScreen(SCREEN_W, SCREEN_H)
+        self.pause     = PauseScreen(SCREEN_W, SCREEN_H)
+        self.powerups  = PowerUpManager()
+        self.projectiles = []
+        self.game_state  = "menu"
+        self.last_gestures      = {"Left": "none", "Right": "none"}
+        self.shoot_cooldowns    = {1: 0, 2: 0}
+        self.player_invincibles = {1: 0, 2: 0}
 
-    def _shoot_toward(self, target_x, target_y):
-        if self.shoot_cooldown > 0:
+    def _get_nearest_enemy(self, from_x, from_y):
+        enemies = self.waves.get_enemies()
+        if not enemies:
+            return None
+        return min(enemies, key=lambda e: math.sqrt((e.x - from_x)**2 + (e.y - from_y)**2))
+
+    def _shoot_toward(self, player, target_x, target_y):
+        pid = player.player_id
+        if self.shoot_cooldowns[pid] > 0:
             return
 
         cooldown = self.shoot_cooldown_max * 0.5 if self.powerups.is_active("rapid_fire") else self.shoot_cooldown_max
-        self.shoot_cooldown = cooldown
+        self.shoot_cooldowns[pid] = cooldown
 
         if self.powerups.is_active("triple_shot"):
-            dx = target_x - self.player.x
-            dy = target_y - self.player.y
+            dx         = target_x - player.x
+            dy         = target_y - player.y
             base_angle = math.atan2(dy, dx)
             for offset in [-0.26, 0, 0.26]:
                 angle = base_angle + offset
-                tx = self.player.x + math.cos(angle) * 300
-                ty = self.player.y + math.sin(angle) * 300
-                self.projectiles.append(Projectile(self.player.x, self.player.y, tx, ty))
+                tx = player.x + math.cos(angle) * 300
+                ty = player.y + math.sin(angle) * 300
+                self.projectiles.append(Projectile(player.x, player.y, tx, ty))
         else:
-            self.projectiles.append(Projectile(self.player.x, self.player.y, target_x, target_y))
+            self.projectiles.append(Projectile(player.x, player.y, target_x, target_y))
 
         self.audio.play("shoot")
         self.hud.add_score(5)
 
-    def _shoot_at_nearest_enemy(self):
-        enemies = self.waves.get_enemies()
-        if not enemies:
-            return
-        nearest = min(
-            enemies,
-            key=lambda e: math.sqrt((e.x - self.player.x)**2 + (e.y - self.player.y)**2)
-        )
-        self._shoot_toward(nearest.x, nearest.y)
+    def _shoot_at_nearest(self, player):
+        enemy = self._get_nearest_enemy(player.x, player.y)
+        if enemy:
+            self._shoot_toward(player, enemy.x, enemy.y)
 
     def _apply_powerup(self, powerup_type):
         self.audio.play("explosion")
-
         if powerup_type == "health":
-            self.hud.health.set_value(self.hud.health.value + 25)
+            self.hud.health_p1.set_value(self.hud.health_p1.value + 25)
+            self.hud.health_p2.set_value(self.hud.health_p2.value + 25)
             self.hud.show_alert("INTEGRITY RESTORED +25")
-
         elif powerup_type == "shield":
-            self.hud.shield.set_value(self.hud.shield.value + 30)
+            self.hud.shield_p1.set_value(self.hud.shield_p1.value + 30)
+            self.hud.shield_p2.set_value(self.hud.shield_p2.value + 30)
             self.hud.show_alert("SHIELD RECHARGED +30")
-
         elif powerup_type == "rapid_fire":
             self.powerups.activate_effect("rapid_fire", 8.0)
             self.hud.show_alert("RAPID FIRE ACTIVATED")
-            self.particles.emit(int(self.player.x), int(self.player.y), count=20, color=(255, 220, 0))
-
+            for p in self.players:
+                self.particles.emit(int(p.x), int(p.y), count=20, color=(255, 220, 0))
         elif powerup_type == "triple_shot":
             self.powerups.activate_effect("triple_shot", 10.0)
             self.hud.show_alert("TRIPLE SHOT ACTIVATED")
-            self.particles.emit(int(self.player.x), int(self.player.y), count=20, color=(255, 0, 180))
+            for p in self.players:
+                self.particles.emit(int(p.x), int(p.y), count=20, color=(255, 0, 180))
 
     def _check_collisions(self):
         enemies = self.waves.get_enemies()
@@ -141,23 +149,30 @@ class Game:
                         self.particles.emit(int(enemy.x), int(enemy.y), count=30, color=(255, 50, 50))
                         self.powerups.try_spawn(int(enemy.x), int(enemy.y), enemy.enemy_type)
 
-        if self.player_invincible <= 0:
+        # Colisiones de enemigos con ambos jugadores
+        health_bars = {1: self.hud.health_p1, 2: self.hud.health_p2}
+        for player in self.players:
+            pid = player.player_id
+            if self.player_invincibles[pid] > 0:
+                continue
             for enemy in enemies:
                 if enemy.dying:
                     continue
-                dist = math.sqrt((enemy.x - self.player.x)**2 + (enemy.y - self.player.y)**2)
+                dist = math.sqrt((enemy.x - player.x)**2 + (enemy.y - player.y)**2)
                 if dist < enemy.radius + 20:
-                    self.hud.health.set_value(self.hud.health.value - 20)
-                    self.player_invincible = self.player_invincible_max
-                    self.particles.emit(int(self.player.x), int(self.player.y), count=20, color=(255, 0, 100))
+                    health_bars[pid].set_value(health_bars[pid].value - 20)
+                    self.player_invincibles[pid] = self.player_invincible_max
+                    self.particles.emit(int(player.x), int(player.y), count=20, color=(255, 0, 100))
                     self.audio.play("explosion")
-                    self.hud.show_alert("INTEGRITY COMPROMISED")
-                    if self.hud.health.value <= 0:
+                    self.hud.show_alert(f"P{pid} INTEGRITY COMPROMISED")
+
+                    # Game over si ambos jugadores llegan a 0
+                    if self.hud.health_p1.value <= 0 and self.hud.health_p2.value <= 0:
                         self.game_state = "game_over"
 
         self.projectiles = [p for p in self.projectiles if p.alive]
 
-    def handle_events(self, hand_data):
+    def handle_events(self, hands):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.hand.stop()
@@ -178,8 +193,12 @@ class Game:
                     if event.key == pygame.K_ESCAPE:
                         self.game_state = "paused"
                         self.pause = PauseScreen(SCREEN_W, SCREEN_H)
+                    # Disparo teclado P1
                     elif event.key == pygame.K_SPACE:
-                        self._shoot_at_nearest_enemy()
+                        self._shoot_at_nearest(self.player1)
+                    # Disparo teclado P2
+                    elif event.key in (pygame.K_u, pygame.K_KP0):
+                        self._shoot_at_nearest(self.player2)
 
                 elif self.game_state == "paused":
                     action = self.pause.handle_input(event)
@@ -196,21 +215,28 @@ class Game:
                     if event.key == pygame.K_r:
                         self._restart()
 
-        current_gesture = hand_data["gesture"]
-        if self.game_state == "menu":
-            if current_gesture == "open" and self.menu.ready:
-                self._start_game()
-        elif self.game_state == "playing":
-            if current_gesture == "point" and self.last_gesture != "point":
-                self._shoot_at_nearest_enemy()
-        self.last_gesture = current_gesture
+        # Gestos por mano
+        for side, player in [("Left", self.player1), ("Right", self.player2)]:
+            current = hands[side]["gesture"]
+            last    = self.last_gestures[side]
+            if self.game_state == "playing":
+                if current == "point" and last != "point":
+                    self._shoot_at_nearest(player)
+            self.last_gestures[side] = current
 
+        # Iniciar desde menú con cualquier mano abierta
+        if self.game_state == "menu":
+            if hands["Left"]["gesture"] == "open" or hands["Right"]["gesture"] == "open":
+                if self.menu.ready:
+                    self._start_game()
+
+        # Click mouse dispara con P1
         if self.game_state == "playing":
             if pygame.mouse.get_pressed()[0]:
                 mx, my = pygame.mouse.get_pos()
-                self._shoot_toward(mx, my)
+                self._shoot_toward(self.player1, mx, my)
 
-    def update(self, dt, keys, hand_data):
+    def update(self, dt, keys, hands):
         self.bg.update(dt)
         self.menu.update(dt)
 
@@ -221,14 +247,18 @@ class Game:
         if self.game_state != "playing":
             return
 
-        if self.shoot_cooldown > 0:
-            self.shoot_cooldown -= dt
-        if self.player_invincible > 0:
-            self.player_invincible -= dt
+        for pid in self.shoot_cooldowns:
+            if self.shoot_cooldowns[pid] > 0:
+                self.shoot_cooldowns[pid] -= dt
+        for pid in self.player_invincibles:
+            if self.player_invincibles[pid] > 0:
+                self.player_invincibles[pid] -= dt
 
         for enemy in self.waves.enemies:
             if enemy.alive:
-                enemy.update(dt, self.player.x, self.player.y)
+                # Enemigo apunta al jugador más cercano
+                nearest = self._get_nearest_enemy_target(enemy)
+                enemy.update(dt, nearest[0], nearest[1])
 
         self.waves.enemies = [e for e in self.waves.enemies if e.alive]
 
@@ -260,15 +290,28 @@ class Game:
         self.projectiles = [p for p in self.projectiles if p.alive]
 
         self.powerups.update(dt)
-        collected = self.powerups.check_collection(self.player.x, self.player.y)
-        for powerup_type in collected:
-            self._apply_powerup(powerup_type)
+        for player in self.players:
+            collected = self.powerups.check_collection(player.x, player.y)
+            for powerup_type in collected:
+                self._apply_powerup(powerup_type)
 
         self._check_collisions()
         self.particles.update(dt)
-        self.player.update(dt, keys, hand_data)
-        self.audio.update(dt, self.player.is_moving)
+
+        # Actualizamos cada jugador con su mano correspondiente
+        self.player1.update(dt, keys, hands["Left"])
+        self.player2.update(dt, keys, hands["Right"])
+
+        self.audio.update(dt, self.player1.is_moving or self.player2.is_moving)
         self.hud.update(dt)
+
+    def _get_nearest_enemy_target(self, enemy):
+        """Retorna las coordenadas del jugador más cercano a un enemigo."""
+        d1 = math.sqrt((enemy.x - self.player1.x)**2 + (enemy.y - self.player1.y)**2)
+        d2 = math.sqrt((enemy.x - self.player2.x)**2 + (enemy.y - self.player2.y)**2)
+        if d1 <= d2:
+            return (self.player1.x, self.player1.y)
+        return (self.player2.x, self.player2.y)
 
     def _draw_wave_info(self):
         wave_text = f"WAVE {self.waves.current_wave} / {self.waves.total_waves}"
@@ -282,7 +325,7 @@ class Game:
         )
         if not self.waves.wave_active and not self.waves.all_waves_done and self.waves.current_wave > 0:
             remaining = self.waves.between_wave_duration - self.waves.between_wave_timer
-            cd_surf = self.font_medium.render(f"NEXT WAVE IN {remaining:.1f}s", True, (255, 200, 0))
+            cd_surf   = self.font_medium.render(f"NEXT WAVE IN {remaining:.1f}s", True, (255, 200, 0))
             self.screen.blit(cd_surf, (SCREEN_W // 2 - cd_surf.get_width() // 2, SCREEN_H // 2))
 
     def _draw_game_over(self):
@@ -307,7 +350,7 @@ class Game:
         self.screen.blit(score, (SCREEN_W // 2 - score.get_width() // 2, SCREEN_H // 2))
         self.screen.blit(sub,   (SCREEN_W // 2 - sub.get_width()   // 2, SCREEN_H // 2 + 40))
 
-    def _draw_camera(self, hand_data):
+    def _draw_camera(self, hands):
         debug_frame = self.hand.get_debug_frame()
         if debug_frame is None:
             return
@@ -315,18 +358,21 @@ class Game:
         small_rgb = cv2.cvtColor(small, cv2.COLOR_BGR2RGB).swapaxes(0, 1)
         self.screen.blit(pygame.surfarray.make_surface(small_rgb), (10, 45))
         pygame.draw.rect(self.screen, (0, 255, 200), (10, 45, 180, 120), 1)
-        gesture_color = (0, 255, 200) if hand_data["detected"] else (100, 100, 100)
-        self.screen.blit(
-            self.font_hud.render(f"GESTO: {hand_data['gesture'].upper()}", True, gesture_color),
-            (10, 168)
-        )
 
-    def draw(self, hand_data):
+        # Estado de cada mano
+        for i, (side, color) in enumerate([("Left", (0, 255, 200)), ("Right", (255, 0, 180))]):
+            detected = hands[side]["detected"]
+            gesture  = hands[side]["gesture"].upper()
+            label    = f"P{i+1} {side.upper()}: {gesture if detected else 'NO SIGNAL'}"
+            surf     = self.font_hud.render(label, True, color if detected else (100, 100, 100))
+            self.screen.blit(surf, (10, 168 + i * 16))
+
+    def draw(self, hands):
         self.bg.draw(self.screen)
 
         if self.game_state == "menu":
             self.menu.draw(self.screen)
-            self._draw_camera(hand_data)
+            self._draw_camera(hands)
             pygame.display.flip()
             return
 
@@ -339,11 +385,14 @@ class Game:
             enemy.draw(self.screen)
 
         self.powerups.draw(self.screen)
-        self.player.draw(self.screen)
-        self.hud.draw(self.screen, self.player.x, self.player.y)
+
+        for player in self.players:
+            player.draw(self.screen)
+
+        self.hud.draw(self.screen, self.players)
         self.powerups.draw_active_effects(self.screen, SCREEN_W, SCREEN_H)
         self._draw_wave_info()
-        self._draw_camera(hand_data)
+        self._draw_camera(hands)
 
         if self.game_state == "paused":
             self.pause.draw(self.screen, self.hud.score.score, self.waves.current_wave)
@@ -359,9 +408,9 @@ class Game:
 
     def run(self):
         while True:
-            dt = self.clock.tick(FPS) / 1000.0
-            keys = pygame.key.get_pressed()
-            hand_data = self.hand.get_state()
-            self.handle_events(hand_data)
-            self.update(dt, keys, hand_data)
-            self.draw(hand_data)
+            dt        = self.clock.tick(FPS) / 1000.0
+            keys      = pygame.key.get_pressed()
+            hands     = self.hand.get_both_states()
+            self.handle_events(hands)
+            self.update(dt, keys, hands)
+            self.draw(hands)

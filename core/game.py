@@ -1,3 +1,4 @@
+# core/game.py
 import pygame
 import sys
 import math
@@ -11,6 +12,7 @@ from systems.hand_controller import HandController
 from systems.wave_manager import WaveManager
 from entities.player import Player
 from entities.projectile import Projectile
+from entities.powerup import PowerUpManager
 from ui.hud import HUD
 from ui.screens import MenuScreen, PauseScreen
 
@@ -19,7 +21,7 @@ class Game:
     def __init__(self):
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
-        pygame.display.set_caption("CyberPy")
+        pygame.display.set_caption("Cyberpunk Hacker")
         self.clock = pygame.time.Clock()
 
         self.bg        = CyberpunkBackground(SCREEN_W, SCREEN_H)
@@ -31,6 +33,7 @@ class Game:
         self.hud       = HUD(SCREEN_W, SCREEN_H)
         self.menu      = MenuScreen(SCREEN_W, SCREEN_H)
         self.pause     = PauseScreen(SCREEN_W, SCREEN_H)
+        self.powerups  = PowerUpManager()
 
         self.projectiles = []
         self.font_hud    = pygame.font.SysFont("Courier New", 13, bold=True)
@@ -58,6 +61,7 @@ class Game:
         self.hud          = HUD(SCREEN_W, SCREEN_H)
         self.menu         = MenuScreen(SCREEN_W, SCREEN_H)
         self.pause        = PauseScreen(SCREEN_W, SCREEN_H)
+        self.powerups     = PowerUpManager()
         self.projectiles  = []
         self.game_state   = "menu"
         self.last_gesture = "none"
@@ -67,8 +71,22 @@ class Game:
     def _shoot_toward(self, target_x, target_y):
         if self.shoot_cooldown > 0:
             return
-        self.shoot_cooldown = self.shoot_cooldown_max
-        self.projectiles.append(Projectile(self.player.x, self.player.y, target_x, target_y))
+
+        cooldown = self.shoot_cooldown_max * 0.5 if self.powerups.is_active("rapid_fire") else self.shoot_cooldown_max
+        self.shoot_cooldown = cooldown
+
+        if self.powerups.is_active("triple_shot"):
+            dx = target_x - self.player.x
+            dy = target_y - self.player.y
+            base_angle = math.atan2(dy, dx)
+            for offset in [-0.26, 0, 0.26]:
+                angle = base_angle + offset
+                tx = self.player.x + math.cos(angle) * 300
+                ty = self.player.y + math.sin(angle) * 300
+                self.projectiles.append(Projectile(self.player.x, self.player.y, tx, ty))
+        else:
+            self.projectiles.append(Projectile(self.player.x, self.player.y, target_x, target_y))
+
         self.audio.play("shoot")
         self.hud.add_score(5)
 
@@ -81,6 +99,27 @@ class Game:
             key=lambda e: math.sqrt((e.x - self.player.x)**2 + (e.y - self.player.y)**2)
         )
         self._shoot_toward(nearest.x, nearest.y)
+
+    def _apply_powerup(self, powerup_type):
+        self.audio.play("explosion")
+
+        if powerup_type == "health":
+            self.hud.health.set_value(self.hud.health.value + 25)
+            self.hud.show_alert("INTEGRITY RESTORED +25")
+
+        elif powerup_type == "shield":
+            self.hud.shield.set_value(self.hud.shield.value + 30)
+            self.hud.show_alert("SHIELD RECHARGED +30")
+
+        elif powerup_type == "rapid_fire":
+            self.powerups.activate_effect("rapid_fire", 8.0)
+            self.hud.show_alert("RAPID FIRE ACTIVATED")
+            self.particles.emit(int(self.player.x), int(self.player.y), count=20, color=(255, 220, 0))
+
+        elif powerup_type == "triple_shot":
+            self.powerups.activate_effect("triple_shot", 10.0)
+            self.hud.show_alert("TRIPLE SHOT ACTIVATED")
+            self.particles.emit(int(self.player.x), int(self.player.y), count=20, color=(255, 0, 180))
 
     def _check_collisions(self):
         enemies = self.waves.get_enemies()
@@ -100,6 +139,7 @@ class Game:
                     if enemy.dying:
                         self.hud.add_score(enemy.score_value)
                         self.particles.emit(int(enemy.x), int(enemy.y), count=30, color=(255, 50, 50))
+                        self.powerups.try_spawn(int(enemy.x), int(enemy.y), enemy.enemy_type)
 
         if self.player_invincible <= 0:
             for enemy in enemies:
@@ -126,6 +166,10 @@ class Game:
 
             if event.type == pygame.KEYDOWN:
                 if self.game_state == "menu":
+                    if event.key == pygame.K_ESCAPE:
+                        self.hand.stop()
+                        pygame.quit()
+                        sys.exit()
                     if event.key in (pygame.K_RETURN, pygame.K_SPACE):
                         if self.menu.ready:
                             self._start_game()
@@ -215,6 +259,11 @@ class Game:
             proj.update(dt, SCREEN_W, SCREEN_H)
         self.projectiles = [p for p in self.projectiles if p.alive]
 
+        self.powerups.update(dt)
+        collected = self.powerups.check_collection(self.player.x, self.player.y)
+        for powerup_type in collected:
+            self._apply_powerup(powerup_type)
+
         self._check_collisions()
         self.particles.update(dt)
         self.player.update(dt, keys, hand_data)
@@ -289,8 +338,10 @@ class Game:
         for enemy in self.waves.get_enemies():
             enemy.draw(self.screen)
 
+        self.powerups.draw(self.screen)
         self.player.draw(self.screen)
         self.hud.draw(self.screen, self.player.x, self.player.y)
+        self.powerups.draw_active_effects(self.screen, SCREEN_W, SCREEN_H)
         self._draw_wave_info()
         self._draw_camera(hand_data)
 

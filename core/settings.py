@@ -1,5 +1,5 @@
-SCREEN_W = 1350
-SCREEN_H = 800
+SCREEN_W = 900
+SCREEN_H = 600
 FPS = 60
 
 #* Paleta cyberpunk

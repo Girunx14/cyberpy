@@ -28,17 +28,17 @@ class WaveManager:
         queue = []
 
         if wave_number == 1:
-            queue = [("basic", )] * 5
+            queue = [("basic", )] * 15
         elif wave_number == 2:
-            queue = [("basic", )] * 4 + [("fast", )] * 2
+            queue = [("basic", )] * 24 + [("fast", )] * 4
         elif wave_number == 3:
-            queue = [("fast", )] * 4 + [("tank", )] * 1
+            queue = [("fast", )] * 34 + [("tank", )] * 10
         elif wave_number == 4:
-            queue = [("basic", )] * 3 + [("fast", )] * 3 + [("tank", )] * 2
+            queue = [("basic", )] * 43 + [("fast", )] * 43 + [("tank", )] * 21
         elif wave_number == 5:
-            queue = [("fast", )] * 4 + [("tank", )] * 3 + [("basic", )] * 4
+            queue = [("fast", )] * 54 + [("tank", )] * 30 + [("basic", )] * 54
 
-        speed_multiplier = 1.0 + (wave_number - 1) * 0.15
+        speed_multiplier = 1.0 + (wave_number - 1) * 0.25
         return queue, speed_multiplier
 
     def _spawn_enemy(self, enemy_type, speed_mult):

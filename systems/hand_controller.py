@@ -25,7 +25,7 @@ class HandController:
             min_tracking_confidence=0.5
         )
 
-        self.cap     = cv2.VideoCapture(0)
+        self.cap     = cv2.VideoCapture(1)
         self.running = False
         self.thread  = None
         self.debug_frame = None

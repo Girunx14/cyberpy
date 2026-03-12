@@ -28,15 +28,15 @@ class WaveManager:
         queue = []
 
         if wave_number == 1:
-            queue = [("basic", )] * 15
+            queue = [("basic", )] * 30
         elif wave_number == 2:
-            queue = [("basic", )] * 24 + [("fast", )] * 4
+            queue = [("basic", )] * 48 + [("fast", )] * 8
         elif wave_number == 3:
-            queue = [("fast", )] * 34 + [("tank", )] * 10
+            queue = [("fast", )] * 68 + [("tank", )] * 20
         elif wave_number == 4:
-            queue = [("basic", )] * 43 + [("fast", )] * 43 + [("tank", )] * 21
+            queue = [("basic", )] * 86 + [("fast", )] * 83 + [("tank", )] * 40
         elif wave_number == 5:
-            queue = [("fast", )] * 54 + [("tank", )] * 30 + [("basic", )] * 54
+            queue = [("fast", )] * 108 + [("tank", )] * 60 + [("basic", )] * 100
 
         speed_multiplier = 1.0 + (wave_number - 1) * 0.25
         return queue, speed_multiplier
